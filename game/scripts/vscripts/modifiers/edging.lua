@@ -8,22 +8,21 @@ function edging:IsHidden() return self:GetStackCount() == 0 end 	-- we can hide 
 function edging:IsDebuff() return false end 	-- make it red or green
 
 function edging:OnCreated(event)
-	self.tick_rate = 0.2
+	self.full_stack_rate = 3
+	self.tick_rate = 1
 	self.max_gain_health_pct_threshold = 10
 
 	self.parent = self:GetParent()
 
-	if IsClient() then return end
 	self:StartIntervalThink(self.tick_rate)
 end
 
 
 function edging:OnIntervalThink()
-	if not self.parent:IsAlive() then return end
+	self.edging_gain = math.min((100 - self.parent:GetHealthPercent()) / (100 - self.max_gain_health_pct_threshold), 1) * self.parent:GetLevel()
+	self.total_gain = (self.total_gain or 0) + self.edging_gain * (self.tick_rate / self.full_stack_rate) 
 
-	local edging_gain = math.min((100 - self.parent:GetHealthPercent()) / (100 - self.max_gain_health_pct_threshold), 1) * self.parent:GetLevel()
-	self.total_gain = (self.total_gain or 0) + edging_gain * self.tick_rate 
-
+	if IsClient() or not self.parent:IsAlive() then return end
 	self:SetStackCount(math.floor(self.total_gain))
 end
 
@@ -33,6 +32,8 @@ function edging:DeclareFunctions()
 		MODIFIER_PROPERTY_STATS_STRENGTH_BONUS,
 		MODIFIER_PROPERTY_STATS_AGILITY_BONUS,
 		MODIFIER_PROPERTY_STATS_INTELLECT_BONUS,
+		MODIFIER_PROPERTY_TOOLTIP,
+		MODIFIER_PROPERTY_TOOLTIP2,
 	}
 end
 
@@ -47,6 +48,14 @@ end
 
 function edging:GetModifierBonusStats_Intellect()
 	return self:GetStackCount()
+end
+
+function edging:OnTooltip()
+	return self.edging_gain or 0
+end 
+
+function edging:OnTooltip2()
+	return self.full_stack_rate or 0
 end
 
 function edging:OnDeath(kv)
